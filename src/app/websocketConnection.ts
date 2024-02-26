@@ -3,6 +3,7 @@ import { RequestPayload, ResponsePayload } from 'utils/types';
 import { WebSocket } from 'ws';
 import { createRoom, getRooms } from './models/rooms';
 import { register } from './models/users';
+import { getWinners } from './models/winners';
 
 export class Connection {
   ws: WebSocket;
@@ -22,9 +23,11 @@ export class Connection {
   }
 
   static updateRooms() {
-    Connection.instancies.forEach((ws) =>
-      ws.send({ type: 'update_room', data: getRooms() }),
-    );
+    Connection.instancies.forEach((ws) => ws.updateRooms());
+  }
+
+  static updateWinners() {
+    Connection.instancies.forEach((ws) => ws.updateWinners());
   }
 
   private handleMessage({ type, data }: RequestPayload) {
@@ -33,7 +36,8 @@ export class Connection {
       this.send({ type, data: result });
       if (result.error) return;
       this.user = result;
-      Connection.updateRooms();
+      this.updateRooms();
+      this.updateWinners();
     }
     if (type === 'create_room') {
       if (!this.user) {
@@ -58,5 +62,12 @@ export class Connection {
         id: 0,
       }),
     );
+  }
+
+  private updateRooms() {
+    this.send({ type: 'update_room', data: getRooms() });
+  }
+  private updateWinners() {
+    this.send({ type: 'update_winners', data: getWinners() });
   }
 }
