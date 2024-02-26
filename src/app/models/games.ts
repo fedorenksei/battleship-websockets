@@ -36,6 +36,7 @@ export class Game {
     if (!otherPlayer.ships) return;
     currentPlayer.user.startGame(currentPlayer.ships);
     otherPlayer.user.startGame(otherPlayer.ships);
+    this.sendTurns();
   }
 
   attack({
@@ -57,6 +58,8 @@ export class Game {
         status,
       }),
     );
+    this.isTurnForSecond = !this.isTurnForSecond;
+    this.sendTurns();
   }
 
   sendTurns() {
