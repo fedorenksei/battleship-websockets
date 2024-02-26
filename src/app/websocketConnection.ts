@@ -4,6 +4,7 @@ import { WebSocket } from 'ws';
 import { createRoom, getRooms, joinRoom } from './models/rooms';
 import { register } from './models/users';
 import { getWinners } from './models/winners';
+import { UnregisteredUserError, handleError } from 'utils/errors';
 
 export class Connection {
   ws: WebSocket;
@@ -18,7 +19,11 @@ export class Connection {
     ws.on('message', (payloadRaw) => {
       const { type, data: dataString } = JSON.parse(String(payloadRaw));
       const data = dataString ? JSON.parse(dataString) : '';
-      this.handleMessage({ type, data });
+      try {
+        this.handleMessage({ type, data });
+      } catch (err) {
+        handleError(err);
+      }
     });
   }
 
@@ -38,29 +43,14 @@ export class Connection {
       this.user = result;
       this.updateRooms();
       this.updateWinners();
-    }
+    } else if (!this.user) throw new UnregisteredUserError();
+
     if (type === 'create_room') {
-      if (!this.user) {
-        console.error('User is not registered');
-        return;
-      }
-      const isRoomCreated = createRoom(this.user);
-      if (!isRoomCreated) {
-        console.error('User is already in a room');
-        return;
-      }
+      createRoom(this.user);
       Connection.updateRooms();
     }
     if (type === 'add_user_to_room') {
-      if (!this.user) {
-        console.error('User is not registered');
-        return;
-      }
-      const hasJoinedRoom = joinRoom({ data, user: this.user });
-      if (!hasJoinedRoom) {
-        console.error('Error');
-        return;
-      }
+      joinRoom({ data, user: this.user });
       Connection.updateRooms();
     }
   }

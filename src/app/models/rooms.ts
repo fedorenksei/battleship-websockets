@@ -1,12 +1,13 @@
 import { Id, RequestCommands, Room, User } from 'utils/commands-types';
+import { AlreadyInRoomError, RoomNotFoundError } from 'utils/errors';
 
 const availableRooms = new Map<Id, Room>();
 const usersInRooms = new Map<Id, Room>();
 let roomsCount = 0;
 
-export function createRoom(user: User): boolean {
+export function createRoom(user: User): void {
   if (usersInRooms.has(user.index)) {
-    return false;
+    throw new AlreadyInRoomError();
   }
   const roomId = roomsCount++;
   const room: Room = {
@@ -15,7 +16,6 @@ export function createRoom(user: User): boolean {
   };
   usersInRooms.set(user.index, room);
   availableRooms.set(roomId, room);
-  return true;
 }
 
 export function joinRoom({
@@ -24,14 +24,12 @@ export function joinRoom({
 }: {
   data: RequestCommands['add_user_to_room'];
   user: User;
-}): boolean {
+}): void {
   const room = availableRooms.get(roomId);
-  if (!room) return false;
-
+  if (!room) throw new RoomNotFoundError();
   availableRooms.delete(roomId);
   room.roomUsers.push(user);
   usersInRooms.set(user.index, room);
-  return true;
 }
 
 export function getRooms(): Room[] {
