@@ -33,3 +33,9 @@ export class WrongUsersAmountInRoomError extends Error {
     super('There are less or more than 1 player in the room');
   }
 }
+
+export class MatrixError extends Error {
+  constructor() {
+    super('Wrong coordinates of matrix');
+  }
+}

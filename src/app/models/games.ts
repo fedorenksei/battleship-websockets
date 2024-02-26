@@ -1,16 +1,20 @@
-import { Id, Ship } from 'app/utils/commands-types';
-import { UserNotInGameError } from '../utils/errors';
+import { Id, RequestCommands, Ship } from 'app/utils/commands-types';
 import { Connection } from 'app/websocketConnection';
+import { UserNotInGameError } from '../utils/errors';
+import { Field } from './field';
 
-// const games = new Map<Id, Game>();
 let gamesCount = 0;
+
+type Player = {
+  user: Connection;
+  ships?: Ship[];
+  field?: Field;
+};
 
 export class Game {
   id: Id;
-  players: [
-    { user: Connection; ships?: Ship[] },
-    { user: Connection; ships?: Ship[] },
-  ];
+  players: [Player, Player];
+  isTurnForSecond = false;
 
   constructor({
     gameId,
@@ -24,6 +28,45 @@ export class Game {
   }
 
   addShips({ user, ships }: { user: Connection; ships: Ship[] }) {
+    const { currentPlayer, otherPlayer } = this.getPlayers(user);
+
+    currentPlayer.ships = ships;
+    currentPlayer.field = new Field(ships);
+
+    if (!otherPlayer.ships) return;
+    currentPlayer.user.startGame(currentPlayer.ships);
+    otherPlayer.user.startGame(otherPlayer.ships);
+  }
+
+  attack({
+    user,
+    position,
+  }: {
+    user: Connection;
+    position: RequestCommands['attack'];
+  }) {
+    const { currentPlayer, otherPlayer } = this.getPlayers(user);
+    const isShot = otherPlayer.field?.attack(position);
+    const status = isShot ? 'shot' : 'miss';
+    if (!currentPlayer.user.user) return;
+    const userId = currentPlayer.user.user.index;
+    this.players.forEach((player) =>
+      player.user.sendAttackFeedback({
+        currentPlayer: userId,
+        position,
+        status,
+      }),
+    );
+  }
+
+  sendTurns() {
+    const currentPlayer = this.players[this.isTurnForSecond ? 1 : 0];
+    if (!currentPlayer.user.user) return;
+    const userId = currentPlayer.user.user.index;
+    this.players.forEach((player) => player.user.sendTurn(userId));
+  }
+
+  private getPlayers(user: Connection) {
     if (user !== this.players[0].user && user !== this.players[1].user)
       throw new UserNotInGameError();
 
@@ -32,11 +75,7 @@ export class Game {
         ? this.players
         : [this.players[1], this.players[0]];
 
-    currentPlayer.ships = ships;
-
-    if (!otherPlayer.ships) return;
-    currentPlayer.user.startGame(currentPlayer.ships);
-    otherPlayer.user.startGame(otherPlayer.ships);
+    return { currentPlayer, otherPlayer };
   }
 }
 

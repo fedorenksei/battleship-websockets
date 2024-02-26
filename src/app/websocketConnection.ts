@@ -1,4 +1,4 @@
-import { Id, Ship, User } from 'app/utils/commands-types';
+import { Id, ResponseCommands, Ship, User } from 'app/utils/commands-types';
 import { UnregisteredUserError, handleError } from './utils/errors';
 import { RequestPayload, ResponsePayload } from 'app/utils/types';
 import { WebSocket } from 'ws';
@@ -66,6 +66,9 @@ export class Connection {
     if (type === 'add_ships') {
       this.game?.addShips({ user: this, ships: data.ships });
     }
+    if (type === 'attack') {
+      this.game?.attack({ user: this, position: data });
+    }
   }
 
   startGame(ships: Ship[]) {
@@ -73,6 +76,25 @@ export class Connection {
     this.send({
       type: 'start_game',
       data: { ships, currentPlayerIndex: this.user?.index },
+    });
+  }
+
+  sendTurn(userId: Id) {
+    this.send({
+      type: 'turn',
+      data: { currentPlayer: userId },
+    });
+  }
+
+  sendAttackFeedback({
+    position,
+    status,
+    currentPlayer,
+  }: ResponseCommands['attack']) {
+    if (!this.user) return;
+    this.send({
+      type: 'attack',
+      data: { position, status, currentPlayer },
     });
   }
 
