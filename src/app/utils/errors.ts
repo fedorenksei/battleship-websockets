@@ -21,3 +21,9 @@ export class RoomNotFoundError extends Error {
     super('There is no room with this id');
   }
 }
+
+export class WrongUsersAmountInRoomError extends Error {
+  constructor() {
+    super('There are less or more than 1 player in the room');
+  }
+}

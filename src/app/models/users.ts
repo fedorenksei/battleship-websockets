@@ -1,8 +1,6 @@
-import { RequestCommands, ResponseCommands } from 'utils/commands-types';
+import { RequestCommands, ResponseCommands } from 'app/utils/commands-types';
 
 const userNamesSet = new Set<string>();
-
-// const userIdWebSocketMap = new Map()
 
 export function register({
   name,

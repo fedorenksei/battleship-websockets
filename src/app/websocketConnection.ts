@@ -1,21 +1,22 @@
-import { Id, User } from 'utils/commands-types';
-import { RequestPayload, ResponsePayload } from 'utils/types';
+import { Id, User } from 'app/utils/commands-types';
+import { UnregisteredUserError, handleError } from './utils/errors';
+import { RequestPayload, ResponsePayload } from 'app/utils/types';
 import { WebSocket } from 'ws';
+import { createGame } from './models/games';
 import { createRoom, getRooms, joinRoom } from './models/rooms';
 import { register } from './models/users';
 import { getWinners } from './models/winners';
-import { UnregisteredUserError, handleError } from 'utils/errors';
 
 export class Connection {
   ws: WebSocket;
   roomId?: Id;
   gameId?: Id;
   user?: User;
-  static instancies = new Set<Connection>();
+  static users = new Set<Connection>();
+  static userIdInstanceMap = new Map<Id, Connection>();
 
   constructor(ws: WebSocket) {
     this.ws = ws;
-    Connection.instancies.add(this);
     ws.on('message', (payloadRaw) => {
       const { type, data: dataString } = JSON.parse(String(payloadRaw));
       const data = dataString ? JSON.parse(dataString) : '';
@@ -28,11 +29,10 @@ export class Connection {
   }
 
   static updateRooms() {
-    Connection.instancies.forEach((ws) => ws.updateRooms());
+    Connection.users.forEach((user) => user.updateRooms());
   }
-
   static updateWinners() {
-    Connection.instancies.forEach((ws) => ws.updateWinners());
+    Connection.users.forEach((user) => user.updateWinners());
   }
 
   private handleMessage({ type, data }: RequestPayload) {
@@ -41,6 +41,8 @@ export class Connection {
       this.send({ type, data: result });
       if (result.error) return;
       this.user = result;
+      Connection.users.add(this);
+      Connection.userIdInstanceMap.set(this.user.index, this);
       this.updateRooms();
       this.updateWinners();
     } else if (!this.user) throw new UnregisteredUserError();
@@ -50,9 +52,29 @@ export class Connection {
       Connection.updateRooms();
     }
     if (type === 'add_user_to_room') {
-      joinRoom({ data, user: this.user });
+      const { index: enemyId } = joinRoom({ data, user: this.user });
+      const enemy = Connection.userIdInstanceMap.get(enemyId);
+      if (!enemy || !enemy?.user?.index) throw new UnregisteredUserError();
+
       Connection.updateRooms();
+      const { gameId } = createGame([this.user.index, enemyId]);
+      this.createGame(gameId);
+      enemy.createGame(gameId);
     }
+  }
+
+  private updateRooms() {
+    this.send({ type: 'update_room', data: getRooms() });
+  }
+  private updateWinners() {
+    this.send({ type: 'update_winners', data: getWinners() });
+  }
+  private createGame(gameId: Id) {
+    if (!this.user) return;
+    this.send({
+      type: 'create_game',
+      data: { idGame: gameId, idPlayer: this.user.index },
+    });
   }
 
   private send({ type, data }: ResponsePayload) {
@@ -64,12 +86,5 @@ export class Connection {
         id: 0,
       }),
     );
-  }
-
-  private updateRooms() {
-    this.send({ type: 'update_room', data: getRooms() });
-  }
-  private updateWinners() {
-    this.send({ type: 'update_winners', data: getWinners() });
   }
 }

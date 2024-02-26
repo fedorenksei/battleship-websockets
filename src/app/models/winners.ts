@@ -1,4 +1,4 @@
-import { ResponseCommands, User } from 'utils/commands-types';
+import { ResponseCommands, User } from 'app/utils/commands-types';
 
 const wins: Record<string, number> = {};
 
