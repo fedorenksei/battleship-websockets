@@ -40,7 +40,7 @@ export class Connection {
       const result = register(data);
       this.send({ type, data: result });
       if (result.error) return;
-      this.user = result;
+      this.user = { name: result.name, index: result.index };
       Connection.users.add(this);
       Connection.userIdInstanceMap.set(this.user.index, this);
       this.updateRooms();
@@ -58,6 +58,8 @@ export class Connection {
 
       Connection.updateRooms();
       const { gameId } = createGame([this.user.index, enemyId]);
+      this.gameId = gameId;
+      enemy.gameId = gameId;
       this.createGame(gameId);
       enemy.createGame(gameId);
     }

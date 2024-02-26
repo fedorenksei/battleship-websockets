@@ -33,8 +33,13 @@ export function joinRoom({
   if (!room) throw new RoomNotFoundError();
   if (!room.roomUsers[0] || room.roomUsers.length !== 1)
     throw new WrongUsersAmountInRoomError();
-  availableRooms.delete(roomId);
   const enemy = room.roomUsers[0];
+  if (enemy.index === user.index) throw new AlreadyInRoomError();
+  availableRooms.delete(roomId);
+  availableRooms.forEach((currRoom) => {
+    if (currRoom.roomUsers.some((usr) => usr.index === user.index))
+      availableRooms.delete(currRoom.roomId);
+  });
   room.roomUsers.push(user);
   usersInRooms.set(user.index, room);
   return enemy;
