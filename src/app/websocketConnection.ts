@@ -1,8 +1,8 @@
-import { Id, User } from 'app/utils/commands-types';
+import { Id, Ship, User } from 'app/utils/commands-types';
 import { UnregisteredUserError, handleError } from './utils/errors';
 import { RequestPayload, ResponsePayload } from 'app/utils/types';
 import { WebSocket } from 'ws';
-import { createGame } from './models/games';
+import { Game, createGame } from './models/games';
 import { createRoom, getRooms, joinRoom } from './models/rooms';
 import { register } from './models/users';
 import { getWinners } from './models/winners';
@@ -10,7 +10,7 @@ import { getWinners } from './models/winners';
 export class Connection {
   ws: WebSocket;
   roomId?: Id;
-  gameId?: Id;
+  game?: Game;
   user?: User;
   static users = new Set<Connection>();
   static userIdInstanceMap = new Map<Id, Connection>();
@@ -57,12 +57,23 @@ export class Connection {
       if (!enemy || !enemy?.user?.index) throw new UnregisteredUserError();
 
       Connection.updateRooms();
-      const { gameId } = createGame([this.user.index, enemyId]);
-      this.gameId = gameId;
-      enemy.gameId = gameId;
-      this.createGame(gameId);
-      enemy.createGame(gameId);
+      const game = createGame([this, enemy]);
+      this.game = game;
+      enemy.game = game;
+      this.createGame(game.id);
+      enemy.createGame(game.id);
     }
+    if (type === 'add_ships') {
+      this.game?.addShips({ user: this, ships: data.ships });
+    }
+  }
+
+  startGame(ships: Ship[]) {
+    if (!this.user) return;
+    this.send({
+      type: 'start_game',
+      data: { ships, currentPlayerIndex: this.user?.index },
+    });
   }
 
   private updateRooms() {

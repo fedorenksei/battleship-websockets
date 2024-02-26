@@ -5,7 +5,7 @@ export type Coordinates = {
 
 export type Id = number;
 
-type Ship = {
+export type Ship = {
   position: Coordinates;
   direction: boolean;
   length: number;

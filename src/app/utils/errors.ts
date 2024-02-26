@@ -16,6 +16,12 @@ export class AlreadyInRoomError extends Error {
   }
 }
 
+export class UserNotInGameError extends Error {
+  constructor() {
+    super('User is not in this game');
+  }
+}
+
 export class RoomNotFoundError extends Error {
   constructor() {
     super('There is no room with this id');
