@@ -1,7 +1,7 @@
 import { Id, User } from 'utils/commands-types';
 import { RequestPayload, ResponsePayload } from 'utils/types';
 import { WebSocket } from 'ws';
-import { createRoom, getRooms } from './models/rooms';
+import { createRoom, getRooms, joinRoom } from './models/rooms';
 import { register } from './models/users';
 import { getWinners } from './models/winners';
 
@@ -47,6 +47,18 @@ export class Connection {
       const isRoomCreated = createRoom(this.user);
       if (!isRoomCreated) {
         console.error('User is already in a room');
+        return;
+      }
+      Connection.updateRooms();
+    }
+    if (type === 'add_user_to_room') {
+      if (!this.user) {
+        console.error('User is not registered');
+        return;
+      }
+      const hasJoinedRoom = joinRoom({ data, user: this.user });
+      if (!hasJoinedRoom) {
+        console.error('Error');
         return;
       }
       Connection.updateRooms();
